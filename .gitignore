@@ -1,0 +1,3 @@
+*.o
+*.a
+src/render/3ds/shader_vsh_shbin.h
