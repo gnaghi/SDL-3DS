@@ -701,8 +701,16 @@ N3DS_RenderClear(SDL_Renderer *renderer)
 	//Clear the screen
 	u32 color = COL8888(renderer->r, renderer->g, renderer->b, renderer->a);
 
+<<<<<<< HEAD
 	GX_MemoryFill(data->gpu_fb_addr, color, &data->gpu_fb_addr[0x2EE00],
 		0x201, data->gpu_depth_fb_addr, 0x00000000, &data->gpu_depth_fb_addr[0x2EE00], 0x201);
+=======
+	GX_MemoryFill(
+        data->gpu_fb_addr, color, &data->gpu_fb_addr[0x2EE00], GX_FILL_TRIGGER | GX_FILL_32BIT_DEPTH,
+        data->gpu_depth_fb_addr, 0x00000000, &data->gpu_depth_fb_addr[0x2EE00], GX_FILL_TRIGGER | GX_FILL_32BIT_DEPTH
+    );
+
+>>>>>>> 929ae3912... fix libctru v1.1.0
 	gspWaitForPSC0();
 
     return 0;
@@ -1056,9 +1064,17 @@ N3DS_RenderPresent(SDL_Renderer * renderer)
 	gspWaitForP3D();
 
 	//Copy the GPU rendered FB to the screen FB
+<<<<<<< HEAD
 	GX_DisplayTransfer(data->gpu_fb_addr, GX_BUFFER_DIM(240, 400),
 		(u32 *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL),
 		GX_BUFFER_DIM(240, 400), 0x1000);
+=======
+	GX_DisplayTransfer(
+        data->gpu_fb_addr, GX_BUFFER_DIM(240, 400),
+        (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL),
+        GX_BUFFER_DIM(240, 400), 0x1000
+    );
+>>>>>>> 929ae3912... fix libctru v1.1.0
 
 	gspWaitForPPF();
 
