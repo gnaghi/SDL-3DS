@@ -4,7 +4,7 @@ endif
 
 include $(DEVKITARM)/base_tools
 
-TARGET_LIB = libSDL2.a
+TARGET_LIB = lib/libSDL2.a
 
 OBJS =	src/SDL.o \
 	src/SDL_assert.o \
@@ -108,6 +108,7 @@ LIBS	:= -lctru -lm
 all: $(OBJS) $(TARGET_LIB)
 
 $(TARGET_LIB): $(OBJS)
+	mkdir -p lib
 	$(AR) -rc $@ $^
 
 
