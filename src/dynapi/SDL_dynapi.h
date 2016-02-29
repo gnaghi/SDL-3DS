@@ -47,7 +47,7 @@
 #define SDL_DYNAMIC_API 0
 #elif SDL_BUILDING_WINRT /* probaly not useful on WinRT, given current .dll loading restrictions */
 #define SDL_DYNAMIC_API 0
-#elif SDL_BUILDING_3DS
+#elif __3DS__
 #define SDL_DYNAMIC_API 0
 #elif defined(__clang_analyzer__)
 #define SDL_DYNAMIC_API 0  /* Turn off for static analysis, so reports are more clear. */
