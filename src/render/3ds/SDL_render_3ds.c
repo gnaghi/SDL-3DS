@@ -741,23 +741,70 @@ N3DS_RenderDrawLines(SDL_Renderer * renderer, const SDL_FPoint * points,
                      int count)
 {
     N3DS_RenderData *data = (N3DS_RenderData *)renderer->driverdata;
-    int color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
     int i;
-    /*StartDrawing(renderer);
-    vector_3f* vertices = (vector_3f*)N3DS_pool_malloc(data, count*sizeof(vector_3f));
 
-    for (i = 0; i < count; ++i) {
-            vertices[i].position.x = points[i].position.x;
-            vertices[i].position.y = points[i].position.y;
-            vertices[i].position.z = 0.0f;
-    }*/
+    vector_4f color = { renderer->r/255.0f, renderer->g/255.0f, renderer->b/255.0f, renderer->a/255.0f };
 
-    //sceGuDisable(GU_TEXTURE_2D);
-    //sceGuColor(color);
-    //sceGuShadeModel(GU_FLAT);
-    //sceGuDrawArray(GU_LINE_STRIP, GU_VERTEX_32BITF|GU_TRANSFORM_2D, count, 0, vertices);
-    //sceGuShadeModel(GU_SMOOTH);
-    //sceGuEnable(GU_TEXTURE_2D);
+    for (i = 0; i < count - 1; ++i)
+    {
+        float x0 = points[i].x;
+        float x1 = points[i+1].x;
+        float y0 = points[i].y;
+        float y1 = points[i+1].y;
+
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+
+        float nx = -dy;
+        float ny = dx;
+
+        float len = sqrt(nx * nx + ny * ny);
+
+        if (len > 0)
+        {
+            nx /= len;
+            ny /= len;
+        }
+
+        nx *= 0.5f;
+        ny *= 0.5f;
+
+        vertex_pos_col *vertices = (vertex_pos_col*)N3DS_pool_malloc(data, (sizeof(vertex_pos_col)*4));
+
+        vertices[0].position = (vector_3f){ x0 + nx, y0 + ny, 0.0f };
+        vertices[1].position = (vector_3f){ x0 - nx, y0 - ny, 0.0f };
+        vertices[2].position = (vector_3f){ x1 + nx, y1 + ny, 0.0f };
+        vertices[3].position = (vector_3f){ x1 - nx, y1 - ny, 0.0f };
+
+        vertices[0].color = color;
+        vertices[1].color = color;
+        vertices[2].color = color;
+        vertices[3].color = color;
+
+        GPU_SetTexEnv(
+            0,
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_REPLACE, GPU_REPLACE,
+            0xFFFFFFFF
+        );
+
+        GPU_SetAttributeBuffers(
+            2, // number of attributes
+            (u32*)osConvertVirtToPhys((u32)vertices),
+            GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 4, GPU_FLOAT),
+            0xFFFC, //0b1100
+            0x10,
+            1, //number of buffers
+            (u32[]){0x0}, // buffer offsets (placeholders)
+            (u64[]){0x10}, // attribute permutations for each buffer
+            (u8[]){2} // number of attributes for each buffer
+        );
+
+        GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
+    }
 
     return 0;
 }
@@ -766,48 +813,50 @@ static int
 N3DS_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects,
                      int count)
 {
-	N3DS_RenderData *data = (N3DS_RenderData *) renderer->driverdata;
-	int i;
-	//StartDrawing(renderer);
+    N3DS_RenderData *data = (N3DS_RenderData *) renderer->driverdata;
+    int i;
 
-	for (i = 0; i < count; ++i) {
-		const SDL_FRect *rect = &rects[i];
-		vertex_pos_col *vertices = (vertex_pos_col*)N3DS_pool_malloc(data, (sizeof(vertex_pos_col)*4));
+    vector_4f color = { renderer->r/255.0f, renderer->g/255.0f, renderer->b/255.0f, renderer->a/255.0f };
 
-		vertices[0].position = (vector_3f){(float)rect->x,         (float)rect->y,         0.0f};
-		vertices[1].position = (vector_3f){(float)rect->x+rect->w, (float)rect->y,         0.0f};
-		vertices[2].position = (vector_3f){(float)rect->x,         (float)rect->y+rect->h, 0.0f};
-		vertices[3].position = (vector_3f){(float)rect->x+rect->w, (float)rect->y+rect->h, 0.0f};
+    for (i = 0; i < count; ++i)
+    {
+        const SDL_FRect *rect = &rects[i];
+        vertex_pos_col *vertices = (vertex_pos_col*)N3DS_pool_malloc(data, (sizeof(vertex_pos_col)*4));
 
-		vertices[0].color = (vector_4f){renderer->r/255.0f,  renderer->g/255.0f, renderer->b/255.0f, renderer->a/255.0f};
-		vertices[1].color = vertices[0].color;
-		vertices[2].color = vertices[0].color;
-		vertices[3].color = vertices[0].color;
+        vertices[0].position = (vector_3f){ rect->x, rect->y, 0.0f };
+        vertices[1].position = (vector_3f){ rect->x + rect->w, rect->y, 0.0f };
+        vertices[2].position = (vector_3f){ rect->x, rect->y + rect->h, 0.0f };
+        vertices[3].position = (vector_3f){ rect->x + rect->w, rect->y + rect->h, 0.0f };
 
-		GPU_SetTexEnv(
-			0,
-			GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
-			GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
-			GPU_TEVOPERANDS(0, 0, 0),
-			GPU_TEVOPERANDS(0, 0, 0),
-			GPU_REPLACE, GPU_REPLACE,
-			0xFFFFFFFF
-		);
+        vertices[0].color = color;
+        vertices[1].color = color;
+        vertices[2].color = color;
+        vertices[3].color = color;
 
-		GPU_SetAttributeBuffers(
-			2, // number of attributes
-			(u32*)osConvertVirtToPhys((u32)vertices),
-			GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 4, GPU_FLOAT),
-			0xFFFC, //0b1100
-			0x10,
-			1, //number of buffers
-			(u32[]){0x0}, // buffer offsets (placeholders)
-			(u64[]){0x10}, // attribute permutations for each buffer
-			(u8[]){2} // number of attributes for each buffer
-		);
+        GPU_SetTexEnv(
+            0,
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_REPLACE, GPU_REPLACE,
+            0xFFFFFFFF
+        );
 
-		GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
-	}
+        GPU_SetAttributeBuffers(
+            2, // number of attributes
+            (u32*)osConvertVirtToPhys((u32)vertices),
+            GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 4, GPU_FLOAT),
+            0xFFFC, //0b1100
+            0x10,
+            1, //number of buffers
+            (u32[]){0x0}, // buffer offsets (placeholders)
+            (u64[]){0x10}, // attribute permutations for each buffer
+            (u8[]){2} // number of attributes for each buffer
+        );
+
+        GPU_DrawArray(GPU_TRIANGLE_STRIP, 0, 4);
+    }
 
     return 0;
 }
