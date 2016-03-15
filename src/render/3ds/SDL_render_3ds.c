@@ -67,18 +67,6 @@ static void N3DS_DestroyTexture(SDL_Renderer * renderer,
                                 SDL_Texture * texture);
 static void N3DS_DestroyRenderer(SDL_Renderer * renderer);
 
-/*
-SDL_RenderDriver N3DS_RenderDriver = {
-    N3DS_CreateRenderer,
-    {
-     "PSP",
-     (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE),
-     1,
-     {SDL_PIXELFORMAT_ABGR8888},
-     0,
-     0}
-};
-*/
 SDL_RenderDriver N3DS_RenderDriver = {
     .CreateRenderer = N3DS_CreateRenderer,
     .info = {
@@ -103,12 +91,13 @@ SDL_RenderDriver N3DS_RenderDriver = {
 
 #define N3DS_GPU_FIFO_SIZE       0x80000
 #define N3DS_TEMPPOOL_SIZE       0x80000
-//static unsigned int __attribute__((aligned(16))) DisplayList[262144];
 
-#define COL5650(r,g,b,a)    ((r>>3) | ((g>>2)<<5) | ((b>>3)<<11))
-#define COL5551(r,g,b,a)    ((r>>3) | ((g>>3)<<5) | ((b>>3)<<10) | (a>0?0x7000:0))
-#define COL4444(r,g,b,a)    ((r>>4) | ((g>>4)<<4) | ((b>>4)<<8) | ((a>>4)<<12))
-#define COL8888(r,g,b,a)    ((r) | ((g)<<8) | ((b)<<16) | ((a)<<24))
+// #define COL5650(r,g,b,a)    ((r>>3) | ((g>>2)<<5) | ((b>>3)<<11))
+// #define COL5551(r,g,b,a)    ((r>>3) | ((g>>3)<<5) | ((b>>3)<<10) | (a>0?0x7000:0))
+// #define COL4444(r,g,b,a)    ((r>>4) | ((g>>4)<<4) | ((b>>4)<<8) | ((a>>4)<<12))
+// #define COL8888(r,g,b,a)    ((r) | ((g)<<8) | ((b)<<16) | ((a)<<24))
+
+#define COL8888(r,g,b,a) ((r << 24) | (g << 16) | (b << 8) | (a))
 
 
 
@@ -132,17 +121,11 @@ typedef struct
 	float ortho_matrix_top[4*4];
 	float ortho_matrix_bot[4*4];
 
-
-
-	void*           frontbuffer;
-	void*           backbuffer;
 	SDL_bool        initialized ;
-	SDL_bool        displayListAvail ;
 	unsigned int    psm ;
 	unsigned int    bpp ;
 
-	SDL_bool        vsync;
-	unsigned int    currentColor;
+	// SDL_bool        vsync;
 	int             currentBlendMode;
 
 } N3DS_RenderData;
@@ -297,14 +280,9 @@ void
 StartDrawing(SDL_Renderer * renderer)
 {
 	N3DS_RenderData *data = (N3DS_RenderData *) renderer->driverdata;
-	if(data->displayListAvail)
-		return;
 
 	N3DS_pool_reset(data);
 	GPUCMD_SetBufferOffset(0);
-	//sceGuStart(GU_DIRECT, DisplayList);
-
-	data->displayListAvail = SDL_TRUE;
 }
 
 
@@ -404,36 +382,32 @@ N3DS_CreateRenderer(SDL_Window * window, Uint32 flags)
 	renderer->driverdata = data;
 	renderer->window = window;
 
-	if (data->initialized != SDL_FALSE)
+	if (SDL_TRUE == data->initialized)
 		return 0;
 	data->initialized = SDL_TRUE;
 
-	if (flags & SDL_RENDERER_PRESENTVSYNC) {
-		data->vsync = SDL_TRUE;
-	} else {
-		data->vsync = SDL_FALSE;
-	}
+	// if (flags & SDL_RENDERER_PRESENTVSYNC) {
+		// data->vsync = SDL_TRUE;
+	// } else {
+		// data->vsync = SDL_FALSE;
+	// }
 
 	pixelformat = PixelFormatTo3DSFMT(SDL_GetWindowPixelFormat(window));
 	switch (pixelformat) {
 	case GPU_RGBA4:
 	case GPU_RGB565:
 	case GPU_RGBA5551:
-		//data->frontbuffer = (unsigned int *)(N3DS_FRAME_BUFFER_SIZE<<1);
-		//data->backbuffer =  (unsigned int *)(0);
 		data->bpp = 2;
 		data->psm = pixelformat;
 		break;
 	default:
-		//data->frontbuffer = (unsigned int *)(N3DS_FRAME_BUFFER_SIZE<<2);
-		//data->backbuffer =  (unsigned int *)(0);
 		data->bpp = 4;
 		data->psm = GPU_RGBA8;
 		break;
 	}
 
-	data->gpu_fb_addr       = vramMemAlign(400*240*4, 0x100);
-	data->gpu_depth_fb_addr = vramMemAlign(400*240*2, 0x100);
+	data->gpu_fb_addr       = vramMemAlign(400*240*8, 0x100); // 400*240*4
+	data->gpu_depth_fb_addr = vramMemAlign(400*240*8, 0x100); // 400*240*2
 	data->gpu_cmd           = linearAlloc(N3DS_GPU_FIFO_SIZE);
 	data->pool_addr         = linearAlloc(N3DS_TEMPPOOL_SIZE);
 	data->pool_size         = N3DS_TEMPPOOL_SIZE;
@@ -716,22 +690,51 @@ N3DS_RenderDrawPoints(SDL_Renderer * renderer, const SDL_FPoint * points,
                       int count)
 {
     N3DS_RenderData *data = (N3DS_RenderData *)renderer->driverdata;
-    int color = renderer->a << 24 | renderer->b << 16 | renderer->g << 8 | renderer->r;
     int i;
-    /*StartDrawing(renderer);
-    vector_3f* vertices = (vector_3f*)N3DS_pool_malloc(data, count*sizeof(vector_3f));
 
-    for (i = 0; i < count; ++i) {
-            vertices[i].position.x = points[i].position.x;
-            vertices[i].position.y = points[i].position.y;
-            vertices[i].position.z = 0.0f;
-    }*/
-    //sceGuDisable(GU_TEXTURE_2D);
-    //sceGuColor(color);
-    //sceGuShadeModel(GU_FLAT);
-    //sceGuDrawArray(GU_POINTS, GU_VERTEX_32BITF|GU_TRANSFORM_2D, count, 0, vertices);
-    //sceGuShadeModel(GU_SMOOTH);
-    //sceGuEnable(GU_TEXTURE_2D);
+    vector_4f color = { renderer->r/255.0f, renderer->g/255.0f, renderer->b/255.0f, renderer->a/255.0f };
+
+    for (i = 0; i < count; ++i)
+    {
+        float x = points[i].x;
+        float y = points[i].y;
+
+        vertex_pos_col *vertices = (vertex_pos_col*)N3DS_pool_malloc(data, (sizeof(vertex_pos_col)*4));
+
+        vertices[0].position = (vector_3f){ x, y, 0.0f };
+        vertices[1].position = (vector_3f){ x + 1, y, 0.0f };
+        vertices[2].position = (vector_3f){ x + 1, y + 1, 0.0f };
+        vertices[3].position = (vector_3f){ x, y, 0.0f };
+
+        vertices[0].color = color;
+        vertices[1].color = color;
+        vertices[2].color = color;
+        vertices[3].color = color;
+
+        GPU_SetTexEnv(
+            0,
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVSOURCES(GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_TEVOPERANDS(0, 0, 0),
+            GPU_REPLACE, GPU_REPLACE,
+            0xFFFFFFFF
+        );
+
+        GPU_SetAttributeBuffers(
+            2, // number of attributes
+            (u32*)osConvertVirtToPhys((u32)vertices),
+            GPU_ATTRIBFMT(0, 3, GPU_FLOAT) | GPU_ATTRIBFMT(1, 4, GPU_FLOAT),
+            0xFFFC, //0b1100
+            0x10,
+            1, //number of buffers
+            (u32[]){0x0}, // buffer offsets (placeholders)
+            (u64[]){0x10}, // attribute permutations for each buffer
+            (u8[]){2} // number of attributes for each buffer
+        );
+
+        GPU_DrawArray(GPU_TRIANGLES, 0, 4);
+    }
 
     return 0;
 }
@@ -1097,10 +1100,6 @@ static void
 N3DS_RenderPresent(SDL_Renderer * renderer)
 {
 	N3DS_RenderData *data = (N3DS_RenderData *) renderer->driverdata;
-	if (!data->displayListAvail)
-		return;
-
-	data->displayListAvail = SDL_FALSE;
 
 	GPU_FinishDrawing();
 	GPUCMD_Finalize();
@@ -1119,9 +1118,9 @@ N3DS_RenderPresent(SDL_Renderer * renderer)
 
 	/* Swap buffers */
 	gfxSwapBuffersGpu();
-	if (data->vsync) {
+	// if (data->vsync) {
 		gspWaitForEvent(GSPGPU_EVENT_VBlank0, true);
-	}
+	// }
 
 	//sceGuFinish();
 	//sceGuSync(0,0);
@@ -1152,8 +1151,9 @@ N3DS_DestroyRenderer(SDL_Renderer * renderer)
 {
 	N3DS_RenderData *data = (N3DS_RenderData *) renderer->driverdata;
 	if (data) {
-		if (!data->initialized)
+		if (SDL_FALSE == data->initialized)
 			return;
+		data->initialized = SDL_FALSE;
 
 		//StartDrawing(renderer);
 
@@ -1166,13 +1166,6 @@ N3DS_DestroyRenderer(SDL_Renderer * renderer)
 		vramFree(data->gpu_fb_addr);
 		vramFree(data->gpu_depth_fb_addr);
 
-
-		//sceGuTerm();
-		/*      vfree(data->backbuffer); */
-		/*      vfree(data->frontbuffer); */
-
-		data->initialized = SDL_FALSE;
-		data->displayListAvail = SDL_FALSE;
 		SDL_free(data);
 	}
 	SDL_free(renderer);
