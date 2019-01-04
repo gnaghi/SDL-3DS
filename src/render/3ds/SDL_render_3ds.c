@@ -25,7 +25,7 @@
 #include "SDL_hints.h"
 #include "../SDL_sysrender.h"
 #include <3ds.h>
-#include "shader_vsh_shbin.h"
+#include "vshader_shbin.h"
 
 /* 3DS renderer implementation, based on the CTRULIB  */
 
@@ -444,7 +444,7 @@ N3DS_CreateRenderer(SDL_Window * window, Uint32 flags)
 	GPU_Reset(NULL, data->gpu_cmd, N3DS_GPU_FIFO_SIZE);
 
 	//Setup the shader
-	data->dvlb = DVLB_ParseFile((u32 *)shader_vsh_shbin, shader_vsh_shbin_size);
+	data->dvlb = DVLB_ParseFile((u32 *)vshader_shbin, vshader_shbin_size);
 	shaderProgramInit(&data->shader);
 	shaderProgramSetVsh(&data->shader, &data->dvlb->DVLE[0]);
 
@@ -701,16 +701,10 @@ N3DS_RenderClear(SDL_Renderer *renderer)
 	//Clear the screen
 	u32 color = COL8888(renderer->r, renderer->g, renderer->b, renderer->a);
 
-<<<<<<< HEAD
-	GX_MemoryFill(data->gpu_fb_addr, color, &data->gpu_fb_addr[0x2EE00],
-		0x201, data->gpu_depth_fb_addr, 0x00000000, &data->gpu_depth_fb_addr[0x2EE00], 0x201);
-=======
 	GX_MemoryFill(
         data->gpu_fb_addr, color, &data->gpu_fb_addr[0x2EE00], GX_FILL_TRIGGER | GX_FILL_32BIT_DEPTH,
         data->gpu_depth_fb_addr, 0x00000000, &data->gpu_depth_fb_addr[0x2EE00], GX_FILL_TRIGGER | GX_FILL_32BIT_DEPTH
     );
-
->>>>>>> 929ae3912... fix libctru v1.1.0
 	gspWaitForPSC0();
 
     return 0;
@@ -1064,17 +1058,11 @@ N3DS_RenderPresent(SDL_Renderer * renderer)
 	gspWaitForP3D();
 
 	//Copy the GPU rendered FB to the screen FB
-<<<<<<< HEAD
-	GX_DisplayTransfer(data->gpu_fb_addr, GX_BUFFER_DIM(240, 400),
-		(u32 *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL),
-		GX_BUFFER_DIM(240, 400), 0x1000);
-=======
 	GX_DisplayTransfer(
         data->gpu_fb_addr, GX_BUFFER_DIM(240, 400),
         (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL),
         GX_BUFFER_DIM(240, 400), 0x1000
     );
->>>>>>> 929ae3912... fix libctru v1.1.0
 
 	gspWaitForPPF();
 

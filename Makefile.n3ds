@@ -41,8 +41,7 @@ OBJS =	src/SDL.o \
 	src/filesystem/dummy/SDL_sysfilesystem.o \
 	src/render/SDL_render.o \
 	src/render/SDL_yuv_sw.o \
-	src/render/3ds/shader.vsh.o \
-	src/render/3ds/shader_vsh_shbin.h \
+	src/render/3ds/vshader.shbin.o \
 	src/render/3ds/SDL_render_3ds.o \
 	src/render/software/SDL_blendfillrect.o \
 	src/render/software/SDL_blendline.o \
@@ -103,7 +102,7 @@ LDFLAGS		:=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 CFLAGS		+= -Wno-unused-variable
 
-LIBS	:= -lctru -lm
+LIBS	:= -lcitro3d -lctru -lm
 
 all: $(OBJS) $(TARGET_LIB)
 
@@ -111,14 +110,19 @@ $(TARGET_LIB): $(OBJS)
 	mkdir -p lib
 	$(AR) -rc $@ $^
 
+#---------------------------------------------------------------------------------
+# rules for assembling GPU shaders
+#---------------------------------------------------------------------------------
 
-src/render/3ds/shader_vsh_shbin.h src/render/3ds/shader.vsh.o:
-	@python $(AEMSTRO)/aemstro_as.py src/render/3ds/shader.vsh src/render/3ds/shader.vsh.shbin
-	@bin2s src/render/3ds/shader.vsh.shbin | $(PREFIX)as -o $@
-	@echo "extern const u8" `(echo shader.vsh.shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo src/render/3ds/shader.vsh.shbin | tr . _)`.h
-	@echo "extern const u8" `(echo shader.vsh.shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo src/render/3ds/shader.vsh.shbin | tr . _)`.h
-	@echo "extern const u32" `(echo shader.vsh.shbin | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo src/render/3ds/shader.vsh.shbin | tr . _)`.h
-	@rm src/render/3ds/shader.vsh.shbin
+%.shbin.o: %.pica
+	@echo $(notdir $<)
+	$(eval CURBIN := $(patsubst %.pica,%.shbin,$<))
+	$(eval CURH := $(patsubst %.pica,%.psh.h,$<))
+	@picasso -h $(CURH) -o $(CURBIN) $<
+	@bin2s $(CURBIN) | $(AS) -o $@
+	@echo "extern const u8" `(echo $(notdir $(CURBIN)) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(CURBIN) | tr . _)`.h
+	@echo "extern const u8" `(echo $(notdir $(CURBIN)) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(CURBIN) | tr . _)`.h
+	@echo "extern const u32" `(echo $(notdir $(CURBIN)) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(CURBIN) | tr . _)`.h
 
 install: $(TARGET_LIB)
 	@mkdir -p "$(DEVKITPRO)/portlibs/3ds/lib"
@@ -128,4 +132,4 @@ install: $(TARGET_LIB)
 	@echo "Installed!"
 
 clean:
-	@rm -rf $(OBJS) $(TARGET_LIB) src/render/3ds/shader_vsh_shbin.h
+	@rm -rf $(OBJS) $(TARGET_LIB) src/render/3ds/vshader.psh.h src/render/3ds/vshader.shbin src/render/3ds/vshader_shbin.h
