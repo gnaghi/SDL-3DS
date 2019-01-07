@@ -27,6 +27,9 @@
 #include <3ds.h>
 #include "vshader_shbin.h"
 
+//Temp !
+#include "gpulib.h"
+
 /* 3DS renderer implementation, based on the CTRULIB  */
 
 

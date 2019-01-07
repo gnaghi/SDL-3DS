@@ -1,10 +1,26 @@
+#---------------------------------------------------------------------------------
+#.SUFFIXES:
+#---------------------------------------------------------------------------------
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
+#include $(DEVKITARM)/3ds_rules
 include $(DEVKITARM)/base_tools
 
+#---------------------------------------------------------------------------------
+# TARGET is the name of the output
+# BUILD is the directory where object files & intermediate files will be placed
+# SOURCES is a list of directories containing source code
+# DATA is a list of directories containing data files
+# INCLUDES is a list of directories containing header files
+#---------------------------------------------------------------------------------
 TARGET_LIB = lib/libSDL2.a
+TARGET		:= 	SDL2
+BUILD		:=	build
+#SOURCES		:=	src src/atomic/ src/audio/ src/cpuinfo/ src/events/ src/file/ \
+#			src/haptic/ src/joystick/ src/power/ src/filesystem/dummy/    \
+#			src/render/ src/stdlib/ src/thread/ src/timer/ src/video/
 
 OBJS =	src/SDL.o \
 	src/SDL_assert.o \
@@ -83,24 +99,34 @@ OBJS =	src/SDL.o \
 	src/video/SDL_video.o \
 	src/video/3ds/SDL_3dsevents.o \
 	src/video/3ds/SDL_3dsvideo.o \
-	src/video/3ds/SDL_3dsmouse.o
+	src/video/3ds/SDL_3dsmouse.o \
+  oldgpu/gpulib.o
+#temp
 
 CTRULIB	:= $(DEVKITPRO)/libctru
-INCLUDES = -I./include -I$(CTRULIB)/include
+DATA		:=	data
+INCLUDES = -I./include -I$(CTRULIB)/include -I./oldgpu
+#INCLUDES	:=	include
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH		:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
+ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 CFLAGS		:=	-g -Wall -O2 -mword-relocations \
-			-fomit-frame-pointer -ffast-math \
+			-fomit-frame-pointer -ffunction-sections \
 			$(ARCH)
 CFLAGS		+=	$(INCLUDES) -DARM11 -D_3DS -D__3DS__
+#CFLAGS		+= -Wno-unused-variable
 CXXFLAGS	:=      $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		:=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-CFLAGS		+= -Wno-unused-variable
+#---------------------------------------------------------------------------------
+# list of directories containing libraries, this must be the top level containing
+# include and lib
+#---------------------------------------------------------------------------------
+LIBDIRS	:=	$(CTRULIB)
+
 
 LIBS	:= -lcitro3d -lctru -lm
 
